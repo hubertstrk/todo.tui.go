@@ -1,4 +1,4 @@
-package main
+package app
 
 type Todo struct {
 	Title string `json:"title"`

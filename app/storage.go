@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"encoding/json"
@@ -11,7 +11,7 @@ const (
 	todosFile  = "todos.json"
 )
 
-func todosFilePath() (string, error) {
+func TodosFilePath() (string, error) {
 	configDir, err := os.UserConfigDir()
 	if err != nil {
 		return "", err
@@ -33,27 +33,21 @@ func todosFilePath() (string, error) {
 func ensureFile(path string) error {
 	_, err := os.Stat(path)
 
-	// if there is no error: file exists, do nothing
 	if err == nil {
 		return nil
 	}
-	// if the error is not "file does not exist", return error
 	if !os.IsNotExist(err) {
 		return err
 	}
-	// if the file does not exist, create it with an empty array
 	return os.WriteFile(path, []byte("[]\n"), 0o644)
 }
 
 func LoadTodos(path string) ([]Todo, error) {
 	data, err := os.ReadFile(path)
-
-	// if there is an error reading the file, return error
 	if err != nil {
 		return nil, err
 	}
 
-	// if the file is empty, return an empty slice
 	if len(data) == 0 {
 		return []Todo{}, nil
 	}
@@ -76,8 +70,6 @@ func SaveTodos(path string, todos []Todo) error {
 	}
 
 	data, err := json.MarshalIndent(todos, "", "  ")
-
-	// if there is an error, return error
 	if err != nil {
 		return err
 	}

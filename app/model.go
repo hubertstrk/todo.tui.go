@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ type model struct {
 	err      error
 }
 
-func initialModel(filePath string, todos []Todo) model {
+func InitialModel(filePath string, todos []Todo) tea.Model {
 	input := textinput.New()
 	input.Placeholder = "Add a todo and press Enter"
 	input.CharLimit = 200
@@ -45,7 +45,6 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-
 	case tea.KeyMsg:
 		if m.mode == modeAdd {
 			switch msg.String() {
