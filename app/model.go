@@ -3,7 +3,6 @@ package app
 import (
 	"strings"
 
-	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -22,8 +21,6 @@ type model struct {
 	list     list.Model
 	input    textinput.Model
 	mode     appMode
-	keys     keyMap
-	help     help.Model
 	filePath string
 	err      error
 }
@@ -49,56 +46,7 @@ func (i todoItem) FilterValue() string {
 	return i.todo.Title
 }
 
-type keyMap struct {
-	Up      key.Binding
-	Down    key.Binding
-	New     key.Binding
-	Toggle  key.Binding
-	Archive key.Binding
-	Quit    key.Binding
-}
-
-func defaultKeyMap() keyMap {
-	return keyMap{
-		Up: key.NewBinding(
-			key.WithKeys("up"),
-			key.WithHelp("↑", "up"),
-		),
-		Down: key.NewBinding(
-			key.WithKeys("down"),
-			key.WithHelp("↓", "down"),
-		),
-		New: key.NewBinding(
-			key.WithKeys("n"),
-			key.WithHelp("n", "new"),
-		),
-		Toggle: key.NewBinding(
-			key.WithKeys(" "),
-			key.WithHelp("space", "toggle"),
-		),
-		Archive: key.NewBinding(
-			key.WithKeys("x"),
-			key.WithHelp("x", "archive"),
-		),
-		Quit: key.NewBinding(
-			key.WithKeys("q", "ctrl+c"),
-			key.WithHelp("q", "quit"),
-		),
-	}
-}
-
-func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.New, k.Toggle, k.Archive, k.Quit}
-}
-
-func (k keyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{k.Up, k.Down, k.New},
-		{k.Toggle, k.Archive, k.Quit},
-	}
-}
-
-func makeItems(todos []Todo) []list.Item {
+func createItems(todos []Todo) []list.Item {
 	items := make([]list.Item, 0, len(todos))
 	for _, todo := range todos {
 		items = append(items, todoItem{todo: todo})
@@ -118,22 +66,27 @@ func InitialModel(filePath string, todos []Todo) tea.Model {
 	delegate.SetHeight(1)
 	delegate.SetSpacing(0)
 
-	todoList := list.New(makeItems(todos), delegate, 0, 0)
+	todoList := list.New(createItems(todos), delegate, 0, 0)
 	todoList.Title = "Todos"
-	todoList.SetShowStatusBar(false)
+	todoList.SetShowStatusBar(true)
 	todoList.SetFilteringEnabled(false)
-	todoList.SetShowHelp(false)
+	todoList.SetShowHelp(true)
 
-	keys := defaultKeyMap()
-	helpModel := help.New()
+	newKey := key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "new todo"))
+	toggleKey := key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle"))
+	archiveKey := key.NewBinding(key.WithKeys("x"), key.WithHelp("x", "delete"))
+	todoList.AdditionalShortHelpKeys = func() []key.Binding {
+		return []key.Binding{newKey, toggleKey, archiveKey}
+	}
+	todoList.AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{newKey, toggleKey, archiveKey}
+	}
 
 	return model{
 		todos:    todos,
 		list:     todoList,
 		input:    input,
 		mode:     modeList,
-		keys:     keys,
-		help:     helpModel,
 		filePath: filePath,
 	}
 }
@@ -150,7 +103,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			listHeight = 1
 		}
 		m.list.SetSize(msg.Width, listHeight)
-		m.help.Width = msg.Width
 		return m, nil
 	case tea.KeyMsg:
 		if m.mode == modeAdd {
@@ -159,7 +111,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				title := strings.TrimSpace(m.input.Value())
 				if title != "" {
 					m.todos = append(m.todos, Todo{Title: title, Done: false})
-					m.list.SetItems(makeItems(m.todos))
+					m.list.SetItems(createItems(m.todos))
 					m.list.Select(len(m.todos) - 1)
 					m = m.persist()
 				}
@@ -191,7 +143,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.todos) > 0 {
 				idx := m.list.Index()
 				m.todos[idx].Done = !m.todos[idx].Done
-				m.list.SetItems(makeItems(m.todos))
+				m.list.SetItems(createItems(m.todos))
 				m.list.Select(idx)
 				m = m.persist()
 			}
@@ -200,7 +152,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if len(m.todos) > 0 {
 				idx := m.list.Index()
 				m.todos = append(m.todos[:idx], m.todos[idx+1:]...)
-				m.list.SetItems(makeItems(m.todos))
+				m.list.SetItems(createItems(m.todos))
 				if len(m.todos) == 0 {
 					m.list.Select(0)
 				} else if idx >= len(m.todos) {
@@ -231,9 +183,6 @@ func (m model) View() string {
 	} else {
 		b.WriteString(m.list.View())
 	}
-
-	b.WriteString("\n")
-	b.WriteString(m.help.View(m.keys))
 
 	if m.err != nil {
 		b.WriteString("Error: ")

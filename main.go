@@ -19,7 +19,7 @@ func main() {
 		log.Fatalf("failed to load todos: %v", err)
 	}
 
-	p := tea.NewProgram(app.InitialModel(path, todos))
+	p := tea.NewProgram(app.InitialModel(path, todos), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatalf("app exited with error: %v", err)
 	}
