@@ -31,14 +31,16 @@ type todoItem struct {
 	todo Todo
 }
 
-var doneTodoStyle = lipgloss.NewStyle()
+var doneTodoStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#4dffa3"))
 var appFrameStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.RoundedBorder()).
 	BorderForeground(lipgloss.Color("240")).
 	Padding(0, 1)
+
 var promptLabelStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("86")).
+	Foreground(lipgloss.Color("#a94dff")).
 	Bold(true)
+
 var errorStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("204"))
 
@@ -72,8 +74,8 @@ func createItems(todos []Todo) []list.Item {
 func InitialModel(filePath string, todos []Todo) tea.Model {
 	input := textinput.New()
 	input.Placeholder = "Add a todo and press Enter"
-	input.CharLimit = 300
-	input.Width = 300
+	input.CharLimit = 200
+	input.Width = 200
 
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = false
@@ -87,11 +89,11 @@ func InitialModel(filePath string, todos []Todo) tea.Model {
 	todoList.SetShowHelp(true)
 
 	todoList.Help.Styles.ShortKey = todoList.Help.Styles.ShortKey.
-		Foreground(lipgloss.Color("#ebebeb")).
+		Foreground(lipgloss.Color("#d9d9d9")).
 		Padding(0, 1)
 
 	todoList.Help.Styles.FullKey = todoList.Help.Styles.FullKey.
-		Foreground(lipgloss.Color("#ebebeb")).
+		Foreground(lipgloss.Color("#d9d9d9")).
 		Padding(0, 1)
 
 	newKey := key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "new todo"))
