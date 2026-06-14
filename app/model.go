@@ -32,6 +32,15 @@ type todoItem struct {
 }
 
 var doneTodoStyle = lipgloss.NewStyle()
+var appFrameStyle = lipgloss.NewStyle().
+	BorderStyle(lipgloss.RoundedBorder()).
+	BorderForeground(lipgloss.Color("240")).
+	Padding(0, 1)
+var promptLabelStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("86")).
+	Bold(true)
+var errorStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("204"))
 
 func (x todoItem) Title() string {
 	status := "☐"
@@ -70,15 +79,20 @@ func InitialModel(filePath string, todos []Todo) tea.Model {
 	delegate.ShowDescription = false
 	delegate.SetHeight(1)
 	delegate.SetSpacing(0)
-	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
-		Foreground(lipgloss.Color("86")).
-		Bold(false).Underline(false)
 
 	todoList := list.New(createItems(todos), delegate, 0, 0)
 	todoList.Title = "Todos"
 	todoList.SetShowStatusBar(true)
 	todoList.SetFilteringEnabled(false)
 	todoList.SetShowHelp(true)
+
+	todoList.Help.Styles.ShortKey = todoList.Help.Styles.ShortKey.
+		Foreground(lipgloss.Color("#ebebeb")).
+		Padding(0, 1)
+
+	todoList.Help.Styles.FullKey = todoList.Help.Styles.FullKey.
+		Foreground(lipgloss.Color("#ebebeb")).
+		Padding(0, 1)
 
 	newKey := key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "new todo"))
 	toggleKey := key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle"))
@@ -112,11 +126,15 @@ func (m model) Init() tea.Cmd {
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		listHeight := msg.Height - 4
+		listHeight := msg.Height - 6
 		if listHeight < 1 {
 			listHeight = 1
 		}
-		m.list.SetSize(msg.Width, listHeight)
+		listWidth := msg.Width - 4
+		if listWidth < 1 {
+			listWidth = 1
+		}
+		m.list.SetSize(listWidth, listHeight)
 		return m, nil
 	case tea.KeyMsg:
 		if m.mode == modeAdd {
@@ -230,24 +248,26 @@ func (m model) View() string {
 
 	switch m.mode {
 	case modeAdd:
-		b.WriteString("New todo: ")
+		b.WriteString(promptLabelStyle.Render("New todo"))
+		b.WriteString("\n")
 		b.WriteString(m.input.View())
-		b.WriteString("\n\n")
 	case modeEdit:
-		b.WriteString("Edit todo: ")
+		b.WriteString(promptLabelStyle.Render("Edit todo"))
+		b.WriteString("\n")
 		b.WriteString(m.input.View())
-		b.WriteString("\n\n")
 	default:
 		b.WriteString(m.list.View())
 	}
 
 	if m.err != nil {
-		b.WriteString("Error: ")
-		b.WriteString(m.err.Error())
+		if b.Len() > 0 {
+			b.WriteString("\n")
+		}
+		b.WriteString(errorStyle.Render("Error: " + m.err.Error()))
 		b.WriteString("\n")
 	}
 
-	return b.String()
+	return appFrameStyle.Render(b.String())
 }
 
 func (m model) persist() model {
