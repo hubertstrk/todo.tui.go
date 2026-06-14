@@ -7,6 +7,7 @@ import (
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type appMode string
@@ -14,6 +15,7 @@ type appMode string
 const (
 	modeList appMode = "list"
 	modeAdd  appMode = "add"
+	modeEdit appMode = "edit"
 )
 
 type model struct {
@@ -29,21 +31,24 @@ type todoItem struct {
 	todo Todo
 }
 
-func (i todoItem) Title() string {
-	status := "[ ]"
-	if i.todo.Done {
-		status = "[x]"
+var doneTodoStyle = lipgloss.NewStyle()
+
+func (x todoItem) Title() string {
+	status := "☐"
+	if x.todo.Done {
+		status = "✓"
+		return doneTodoStyle.Render(status + " " + x.todo.Title)
 	}
 
-	return status + " " + i.todo.Title
+	return status + " " + x.todo.Title
 }
 
-func (i todoItem) Description() string {
+func (x todoItem) Description() string {
 	return ""
 }
 
-func (i todoItem) FilterValue() string {
-	return i.todo.Title
+func (x todoItem) FilterValue() string {
+	return x.todo.Title
 }
 
 func createItems(todos []Todo) []list.Item {
@@ -58,13 +63,16 @@ func createItems(todos []Todo) []list.Item {
 func InitialModel(filePath string, todos []Todo) tea.Model {
 	input := textinput.New()
 	input.Placeholder = "Add a todo and press Enter"
-	input.CharLimit = 200
-	input.Width = 50
+	input.CharLimit = 300
+	input.Width = 300
 
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = false
 	delegate.SetHeight(1)
 	delegate.SetSpacing(0)
+	delegate.Styles.SelectedTitle = delegate.Styles.SelectedTitle.
+		Foreground(lipgloss.Color("86")).
+		Bold(false).Underline(false)
 
 	todoList := list.New(createItems(todos), delegate, 0, 0)
 	todoList.Title = "Todos"
@@ -75,11 +83,13 @@ func InitialModel(filePath string, todos []Todo) tea.Model {
 	newKey := key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "new todo"))
 	toggleKey := key.NewBinding(key.WithKeys(" "), key.WithHelp("space", "toggle"))
 	archiveKey := key.NewBinding(key.WithKeys("x"), key.WithHelp("x", "delete"))
+	editKey := key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit"))
+
 	todoList.AdditionalShortHelpKeys = func() []key.Binding {
-		return []key.Binding{newKey, toggleKey, archiveKey}
+		return []key.Binding{newKey, toggleKey, archiveKey, editKey}
 	}
 	todoList.AdditionalFullHelpKeys = func() []key.Binding {
-		return []key.Binding{newKey, toggleKey, archiveKey}
+		return []key.Binding{newKey, toggleKey, archiveKey, editKey}
 	}
 
 	return model{
@@ -91,10 +101,14 @@ func InitialModel(filePath string, todos []Todo) tea.Model {
 	}
 }
 
+// Init initializes the model and returns an optional command to execute.
+// Called when the program starts, before the first update and view calls.
 func (m model) Init() tea.Cmd {
 	return nil
 }
 
+// Update handles incoming messages (events) and updates the model accordingly.
+// Called whenever an event occurs (e.g., key press, window resize).
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -131,6 +145,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		if m.mode == modeEdit {
+			switch msg.String() {
+			case "enter":
+				title := strings.TrimSpace(m.input.Value())
+				if title != "" {
+					idx := m.list.Index()
+					m.todos[idx].Title = title
+					m.list.SetItems(createItems(m.todos))
+					m.list.Select(idx)
+					m = m.persist()
+				}
+				m.mode = modeList
+				m.input.SetValue("")
+				m.input.Blur()
+				return m, nil
+			case "esc":
+				m.mode = modeList
+				m.input.SetValue("")
+				m.input.Blur()
+				return m, nil
+			default:
+				var cmd tea.Cmd
+				m.input, cmd = m.input.Update(msg)
+				return m, cmd
+			}
+		}
+
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
@@ -138,6 +179,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.mode = modeAdd
 			m.input.SetValue("")
 			m.input.Focus()
+			return m, nil
+		case "e":
+			if len(m.todos) > 0 {
+				idx := m.list.Index()
+				m.input.SetValue(m.todos[idx].Title)
+				m.mode = modeEdit
+				m.input.Focus()
+				return m, nil
+			}
 			return m, nil
 		case " ":
 			if len(m.todos) > 0 {
@@ -173,14 +223,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// View renders the UI based on the current model state.
+// Called after every update to refresh the display.
 func (m model) View() string {
 	var b strings.Builder
 
-	if m.mode == modeAdd {
+	switch m.mode {
+	case modeAdd:
 		b.WriteString("New todo: ")
 		b.WriteString(m.input.View())
 		b.WriteString("\n\n")
-	} else {
+	case modeEdit:
+		b.WriteString("Edit todo: ")
+		b.WriteString(m.input.View())
+		b.WriteString("\n\n")
+	default:
 		b.WriteString(m.list.View())
 	}
 
