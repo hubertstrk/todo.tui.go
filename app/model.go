@@ -31,7 +31,7 @@ type todoItem struct {
 	todo Todo
 }
 
-var doneTodoStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#4dffa3"))
+var doneTodoStyle = lipgloss.NewStyle()
 var appFrameStyle = lipgloss.NewStyle().
 	// BorderStyle(lipgloss.RoundedBorder()).
 	// BorderForeground(lipgloss.Color("240")).
