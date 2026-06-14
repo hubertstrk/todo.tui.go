@@ -33,8 +33,8 @@ type todoItem struct {
 
 var doneTodoStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#4dffa3"))
 var appFrameStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.RoundedBorder()).
-	BorderForeground(lipgloss.Color("240")).
+	// BorderStyle(lipgloss.RoundedBorder()).
+	// BorderForeground(lipgloss.Color("240")).
 	Padding(0, 1)
 
 var promptLabelStyle = lipgloss.NewStyle().
